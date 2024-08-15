@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>USA Cancer Distribution Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: Arial, sans-serif;
+        }
+        #map {
+            height: 80vh;
+            width: 100%;
+        }
+        #controls {
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        .info {
+            padding: 6px 8px;
+            font: 14px/16px Arial, Helvetica, sans-serif;
+            background: white;
+            background: rgba(255,255,255,0.8);
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+            border-radius: 5px;
+        }
+        .info h4 {
+            margin: 0 0 5px;
+            color: #777;
+        }
+        .legend {
+            line-height: 18px;
+            color: #555;
+        }
+        .legend i {
+            width: 18px;
+            height: 18px;
+            float: left;
+            margin-right: 8px;
+            opacity: 0.7;
+        }
+        #age-chart {
+            width: 300px;
+            height: 200px;
+        }
+    </style>
+</head>
+<body>
+    <h1>USA Cancer Distribution Map</h1>
+    <div id="controls">
+        <select id="cancerType"></select>
+        <button onclick="updateMap()">Update Map</button>
+    </div>
+    <div id="map"></div>
+
+    <script>
+        var map = L.map('map').setView([37.8, -96], 4);  // Center on USA
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        var cancerData = {
+    "Breast Cancer": {
+        "Alabama": {total: 500, "0-14": 30, "15-24": 40, "25-54": 200, "55-64": 150, "65+": 80},
+        "Alaska": {total: 100, "0-14": 10, "15-24": 5, "25-54": 40, "55-64": 25, "65+": 20},
+        "Arizona": {total: 600, "0-14": 35, "15-24": 50, "25-54": 250, "55-64": 180, "65+": 85},
+        "Arkansas": {total: 450, "0-14": 25, "15-24": 35, "25-54": 180, "55-64": 130, "65+": 80},
+        "California": {total: 2000, "0-14": 100, "15-24": 150, "25-54": 800, "55-64": 600, "65+": 350},
+        "Colorado": {total: 700, "0-14": 40, "15-24": 60, "25-54": 300, "55-64": 180, "65+": 120},
+        "Connecticut": {total: 500, "0-14": 30, "15-24": 40, "25-54": 200, "55-64": 150, "65+": 80},
+        "Delaware": {total: 150, "0-14": 10, "15-24": 15, "25-54": 60, "55-64": 40, "65+": 25},
+        "Florida": {total: 1500, "0-14": 90, "15-24": 120, "25-54": 600, "55-64": 450, "65+": 240},
+        "Georgia": {total: 800, "0-14": 50, "15-24": 70, "25-54": 350, "55-64": 230, "65+": 120},
+        "Hawaii": {total: 200, "0-14": 15, "15-24": 20, "25-54": 80, "55-64": 50, "65+": 35},
+        "Idaho": {total: 250, "0-14": 15, "15-24": 20, "25-54": 100, "55-64": 70, "65+": 25},
+        "Illinois": {total: 1200, "0-14": 80, "15-24": 110, "25-54": 500, "55-64": 350, "65+": 160},
+        "Indiana": {total: 650, "0-14": 40, "15-24": 50, "25-54": 300, "55-64": 180, "65+": 80},
+        "Iowa": {total: 300, "0-14": 20, "15-24": 30, "25-54": 120, "55-64": 80, "65+": 50},
+        "Kansas": {total: 350, "0-14": 25, "15-24": 30, "25-54": 150, "55-64": 90, "65+": 55},
+        "Kentucky": {total: 700, "0-14": 40, "15-24": 50, "25-54": 300, "55-64": 180, "65+": 130},
+        "Louisiana": {total: 550, "0-14": 30, "15-24": 40, "25-54": 250, "55-64": 150, "65+": 80},
+        "Maine": {total: 200, "0-14": 10, "15-24": 15, "25-54": 80, "55-64": 60, "65+": 35},
+        "Maryland": {total: 800, "0-14": 50, "15-24": 70, "25-54": 350, "55-64": 230, "65+": 120},
+        "Massachusetts": {total: 1000, "0-14": 60, "15-24": 80, "25-54": 400, "55-64": 300, "65+": 160},
+        "Michigan": {total: 900, "0-14": 50, "15-24": 70, "25-54": 400, "55-64": 300, "65+": 80},
+        "Minnesota": {total: 700, "0-14": 40, "15-24": 50, "25-54": 300, "55-64": 180, "65+": 130},
+        "Mississippi": {total: 400, "0-14": 25, "15-24": 35, "25-54": 150, "55-64": 100, "65+": 90},
+        "Missouri": {total: 700, "0-14": 40, "15-24": 50, "25-54": 300, "55-64": 200, "65+": 110},
+        "Montana": {total: 150, "0-14": 10, "15-24": 10, "25-54": 60, "55-64": 45, "65+": 30},
+        "Nebraska": {total: 250, "0-14": 15, "15-24": 20, "25-54": 100, "55-64": 80, "65+": 35},
+        "Nevada": {total: 300, "0-14": 20, "15-24": 25, "25-54": 120, "55-64": 90, "65+": 45},
+        "New Hampshire": {total: 200, "0-14": 15, "15-24": 10, "25-54": 70, "55-64": 70, "65+": 35},
+        "New Jersey": {total: 900, "0-14": 60, "15-24": 80, "25-54": 400, "55-64": 270, "65+": 120},
+        "New Mexico": {total: 250, "0-14": 15, "15-24": 20, "25-54": 100, "55-64": 80, "65+": 35},
+        "New York": {total: 1500, "0-14": 90, "15-24": 120, "25-54": 600, "55-64": 450, "65+": 240},
+        "North Carolina": {total: 750, "0-14": 45, "15-24": 60, "25-54": 350, "55-64": 200, "65+": 95},
+        "North Dakota": {total: 100, "0-14": 5, "15-24": 10, "25-54": 40, "55-64": 30, "65+": 15},
+        "Ohio": {total: 1000, "0-14": 70, "15-24": 90, "25-54": 400, "55-64": 350, "65+": 90},
+        "Oklahoma": {total: 400, "0-14": 20, "15-24": 30, "25-54": 150, "55-64": 100, "65+": 100},
+        "Oregon": {total: 500, "0-14": 30, "15-24": 40, "25-54": 200, "55-64": 150, "65+": 80},
+        "Pennsylvania": {total: 1100, "0-14": 70, "15-24": 100, "25-54": 450, "55-64": 350, "65+": 130},
+        "Rhode Island": {total: 150, "0-14": 10, "15-24": 15, "25-54": 60, "55-64": 45, "65+": 20},
+        "South Carolina": {total: 600, "0-14": 35, "15-24": 50, "25-54": 250, "55-64": 180, "65+": 85},
+        "South Dakota": {total: 100, "0-14": 5, "15-24": 10, "25-54": 40, "55-64": 30, "65+": 15},
+        "Tennessee": {total: 700, "0-14": 40, "15-24": 50, "25-54": 300, "55-64": 200, "65+": 110},
+        "Texas": {total: 2000, "0-14": 120, "15-24": 150, "25-54": 800, "55-64": 600, "65+": 330},
+        "Utah": {total: 200, "0-14": 15, "15-24": 20, "25-54": 80, "55-64": 55, "65+": 30},
+        "Vermont": {total: 100, "0-14": 5, "15-24": 10, "25-54": 40, "55-64": 30, "65+": 15},
+        "Virginia": {total: 800, "0-14": 50, "15-24": 70, "25-54": 350, "55-64": 230, "65+": 120},
+        "Washington": {total: 700, "0-14": 40, "15-24": 50, "25-54": 300, "55-64": 200, "65+": 110},
+        "West Virginia": {total: 400, "0-14": 25, "15-24": 30, "25-54": 150, "55-64": 100, "65+": 95},
+        "Wisconsin": {total: 600, "0-14": 35, "15-24": 50, "25-54": 250, "55-64": 180, "65+": 85},
+        "Wyoming": {total: 100, "0-14": 5, "15-24": 10, "25-54": 40, "55-64": 30, "65+": 15}
+    },
+    "Lung Cancer": {
+        "Alabama": {total: 400, "0-14": 20, "15-24": 30, "25-54": 150, "55-64": 100, "65+": 100},
+        "Alaska": {total: 80, "0-14": 5, "15-24": 10, "25-54": 30, "55-64": 20, "65+": 15},
+        "Arizona": {total: 700, "0-14": 25, "15-24": 40, "25-54": 300, "55-64": 200, "65+": 135},
+        "Arkansas": {total: 500, "0-14": 15, "15-24": 25, "25-54": 200, "55-64": 150, "65+": 110},
+        "California": {total: 3000, "0-14": 150, "15-24": 200, "25-54": 1200, "55-64": 1000, "65+": 450},
+        "Colorado": {total: 600, "0-14": 30, "15-24": 40, "25-54": 250, "55-64": 180, "65+": 100},
+        "Connecticut": {total: 400, "0-14": 20, "15-24": 30, "25-54": 150, "55-64": 100, "65+": 80},
+        "Delaware": {total: 100, "0-14": 5, "15-24": 10, "25-54": 40, "55-64": 30, "65+": 15},
+        "Florida": {total: 2000, "0-14": 100, "15-24": 150, "25-54": 800, "55-64": 600, "65+": 350},
+        "Georgia": {total: 1000, "0-14": 50, "15-24": 80, "25-54": 400, "55-64": 300, "65+": 170},
+        "Hawaii": {total: 300, "0-14": 15, "15-24": 20, "25-54": 120, "55-64": 80, "65+": 65},
+        "Idaho": {total: 200, "0-14": 10, "15-24": 15, "25-54": 80, "55-64": 60, "65+": 35},
+        "Illinois": {total: 1500, "0-14": 80, "15-24": 120, "25-54": 600, "55-64": 500, "65+": 200},
+        "Indiana": {total: 700, "0-14": 40, "15-24": 50, "25-54": 300, "55-64": 200, "65+": 110},
+        "Iowa": {total: 400, "0-14": 20, "15-24": 30, "25-54": 150, "55-64": 100, "65+": 70},
+        "Kansas": {total: 350, "0-14": 15, "15-24": 20, "25-54": 150, "55-64": 100, "65+": 65},
+        "Kentucky": {total: 800, "0-14": 40, "15-24": 60, "25-54": 350, "55-64": 250, "65+": 180},
+        "Louisiana": {total: 600, "0-14": 30, "15-24": 40, "25-54": 250, "55-64": 150, "65+": 130},
+        "Maine": {total: 150, "0-14": 10, "15-24": 10, "25-54": 60, "55-64": 45, "65+": 25},
+        "Maryland": {total: 900, "0-14": 50, "15-24": 70, "25-54": 400, "55-64": 300, "65+": 160},
+        "Massachusetts": {total: 1200, "0-14": 70, "15-24": 90, "25-54": 500, "55-64": 400, "65+": 240},
+        "Michigan": {total: 1000, "0-14": 50, "15-24": 70, "25-54": 400, "55-64": 300, "65+": 180},
+        "Minnesota": {total: 800, "0-14": 40, "15-24": 50, "25-54": 350, "55-64": 250, "65+": 150},
+        "Mississippi": {total: 500, "0-14": 25, "15-24": 35, "25-54": 200, "55-64": 150, "65+": 90},
+        "Missouri": {total: 800, "0-14": 50, "15-24": 60, "25-54": 350, "55-64": 250, "65+": 130},
+        "Montana": {total: 100, "0-14": 5, "15-24": 10, "25-54": 40, "55-64": 30, "65+": 15},
+        "Nebraska": {total: 250, "0-14": 15, "15-24": 20, "25-54": 100, "55-64": 80, "65+": 35},
+        "Nevada": {total: 400, "0-14": 20, "15-24": 30, "25-54": 150, "55-64": 120, "65+": 80},
+        "New Hampshire": {total: 200, "0-14": 15, "15-24": 10, "25-54": 80, "55-64": 60, "65+": 35},
+        "New Jersey": {total: 1200, "0-14": 70, "15-24": 90, "25-54": 500, "55-64": 400, "65+": 240},
+        "New Mexico": {total: 300, "0-14": 15, "15-24": 20, "25-54": 120, "55-64": 90, "65+": 55},
+        "New York": {total: 1800, "0-14": 100, "15-24": 140, "25-54": 800, "55-64": 600, "65+": 320},
+        "North Carolina": {total: 850, "0-14": 45, "15-24": 60, "25-54": 350, "55-64": 250, "65+": 145},
+        "North Dakota": {total: 80, "0-14": 5, "15-24": 5, "25-54": 30, "55-64": 20, "65+": 10},
+        "Ohio": {total: 1200, "0-14": 70, "15-24": 90, "25-54": 500, "55-64": 400, "65+": 140},
+        "Oklahoma": {total: 500, "0-14": 25, "15-24": 30, "25-54": 200, "55-64": 150, "65+": 95},
+        "Oregon": {total: 600, "0-14": 30, "15-24": 40, "25-54": 250, "55-64": 180, "65+": 100},
+        "Pennsylvania": {total: 1300, "0-14": 80, "15-24": 100, "25-54": 550, "55-64": 450, "65+": 220},
+        "Rhode Island": {total: 200, "0-14": 10, "15-24": 15, "25-54": 80, "55-64": 50, "65+": 45},
+        "South Carolina": {total: 600, "0-14": 35, "15-24": 50, "25-54": 250, "55-64": 180, "65+": 85},
+        "South Dakota": {total: 100, "0-14": 5, "15-24": 10, "25-54": 40, "55-64": 30, "65+": 15},
+        "Tennessee": {total: 800, "0-14": 45, "15-24": 60, "25-54": 350, "55-64": 250, "65+": 150},
+        "Texas": {total: 3000, "0-14": 150, "15-24": 200, "25-54": 1200, "55-64": 1000, "65+": 450},
+        "Utah": {total: 200, "0-14": 15, "15-24": 20, "25-54": 80, "55-64": 55, "65+": 30},
+        "Vermont": {total: 100, "0-14": 5, "15-24": 5, "25-54": 40, "55-64": 30, "65+": 20},
+        "Virginia": {total: 800, "0-14": 50, "15-24": 70, "25-54": 350, "55-64": 250, "65+": 150},
+        "Washington": {total: 800, "0-14": 40, "15-24": 60, "25-54": 350, "55-64": 250, "65+": 100},
+        "West Virginia": {total: 500, "0-14": 25, "15-24": 30, "25-54": 200, "55-64": 150, "65+": 95},
+        "Wisconsin": {total: 700, "0-14": 40, "15-24": 50, "25-54": 300, "55-64": 200, "65+": 110},
+        "Wyoming": {total: 100, "0-14": 5, "15-24": 10, "25-54": 40, "55-64": 30, "65+": 15}
+    }
+};
+
+
+        var geojson;
+        var info = L.control();
+        var legend = L.control({position: 'bottomright'});
+
+        function getColor(d) {
+            return d > 1000 ? '#800026' :
+                   d > 500  ? '#BD0026' :
+                   d > 200  ? '#E31A1C' :
+                   d > 100  ? '#FC4E2A' :
+                   d > 50   ? '#FD8D3C' :
+                   d > 20   ? '#FEB24C' :
+                   d > 10   ? '#FED976' :
+                              '#FFEDA0';
+        }
+
+        function style(feature) {
+            var selectedCancerType = document.getElementById('cancerType').value;
+            var stateName = feature.properties.name;
+            var caseCount = cancerData[selectedCancerType] && cancerData[selectedCancerType][stateName] ? 
+                            cancerData[selectedCancerType][stateName].total : 0;
+            return {
+                fillColor: getColor(caseCount),
+                weight: 2,
+                opacity: 1,
+                color: 'white',
+                dashArray: '3',
+                fillOpacity: 0.7
+            };
+        }
+
+        function highlightFeature(e) {
+            var layer = e.target;
+            layer.setStyle({
+                weight: 5,
+                color: '#666',
+                dashArray: '',
+                fillOpacity: 0.7
+            });
+            if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
+                layer.bringToFront();
+            }
+            info.update(layer.feature.properties);
+        }
+
+        function resetHighlight(e) {
+            geojson.resetStyle(e.target);
+            info.update();
+        }
+
+        function onEachFeature(feature, layer) {
+            layer.on({
+                mouseover: highlightFeature,
+                mouseout: resetHighlight
+            });
+        }
+
+        info.onAdd = function (map) {
+            this._div = L.DomUtil.create('div', 'info');
+            this._div.innerHTML = '<h4>USA Cancer Cases</h4><div id="age-chart"></div>';
+            return this._div;
+        };
+
+        info.update = function (props) {
+            var selectedCancerType = document.getElementById('cancerType').value;
+            if (props) {
+                var stateName = props.name;
+                var stateData = cancerData[selectedCancerType] && cancerData[selectedCancerType][stateName] ? 
+                                cancerData[selectedCancerType][stateName] : null;
+                if (stateData) {
+                    this._div.innerHTML = '<h4>USA Cancer Cases</h4>' +
+                        '<b>' + stateName + '</b><br />' + stateData.total + ' total cases<br />' +
+                        '<div id="age-chart"></div>';
+                    createAgeChart(stateData);
+                } else {
+                    this._div.innerHTML = '<h4>USA Cancer Cases</h4>' +
+                        '<b>' + stateName + '</b><br />No data available';
+                }
+            } else {
+                this._div.innerHTML = '<h4>USA Cancer Cases</h4>Hover over a state';
+            }
+        };
+
+        function createAgeChart(data) {
+            // Clear previous chart
+            d3.select("#age-chart").html("");
+
+            // Set up dimensions
+            var margin = {top: 20, right: 20, bottom: 30, left: 40},
+                width = 260 - margin.left - margin.right,
+                height = 200 - margin.top - margin.bottom;
+
+            // Create SVG element
+            var svg = d3.select("#age-chart")
+                .append("svg")
+                .attr("width", width + margin.left + margin.right)
+                .attr("height", height + margin.top + margin.bottom)
+                .append("g")
+                .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+            // Define age groups and their corresponding data
+            var ageGroups = ["0-14", "15-24", "25-54", "55-64", "65+"];
+            var ageData = ageGroups.map(function(age) {
+                return {age: age, value: data[age] || 0};
+            });
+
+            // Set up scales
+            var x = d3.scaleBand()
+                .range([0, width])
+                .padding(0.1);
+            var y = d3.scaleLinear()
+                .range([height, 0]);
+
+            x.domain(ageGroups);
+            y.domain([0, d3.max(ageData, function(d) { return d.value; })]);
+
+            // Create bars
+            svg.selectAll(".bar")
+                .data(ageData)
+                .enter().append("rect")
+                .attr("class", "bar")
+                .attr("x", function(d) { return x(d.age); })
+                .attr("width", x.bandwidth())
+                .attr("y", function(d) { return y(d.value); })
+                .attr("height", function(d) { return height - y(d.value); })
+                .attr("fill", "steelblue");
+
+            // Add the x Axis
+            svg.append("g")
+                .attr("transform", "translate(0," + height + ")")
+                .call(d3.axisBottom(x));
+
+            // Add the y Axis
+            svg.append("g")
+                .call(d3.axisLeft(y));
+
+            // Add title
+            svg.append("text")
+                .attr("x", (width / 2))
+                .attr("y", 0 - (margin.top / 2))
+                .attr("text-anchor", "middle")
+                .style("font-size", "16px")
+                .text("Age Distribution");
+        }
+
+        legend.onAdd = function (map) {
+            var div = L.DomUtil.create('div', 'info legend'),
+                grades = [0, 10, 20, 50, 100, 200, 500, 1000],
+                labels = [];
+            for (var i = 0; i < grades.length; i++) {
+                div.innerHTML +=
+                    '<i style="background:' + getColor(grades[i] + 1) + '"></i> ' +
+                    grades[i] + (grades[i + 1] ? '&ndash;' + grades[i + 1] + '<br>' : '+');
+            }
+            return div;
+        };
+
+        function updateMap() {
+            if (geojson) {
+                map.removeLayer(geojson);
+            }
+            geojson = L.geoJson(statesData, {
+                style: style,
+                onEachFeature: onEachFeature
+            }).addTo(map);
+            info.update();
+        }
+
+        // Add controls
+        info.addTo(map);
+        legend.addTo(map);
+
+        // Load USA states GeoJSON data
+        fetch('https://raw.githubusercontent.com/PublicaMundi/MappingAPI/master/data/geojson/us-states.json')
+            .then(response => response.json())
+            .then(data => {
+                statesData = data;
+                updateMap();
+            });
+
+        // Populate dropdown menu
+        var dropdown = document.getElementById('cancerType');
+        Object.keys(cancerData).forEach(function(cancerType) {
+            var option = document.createElement('option');
+            option.value = cancerType;
+            option.textContent = cancerType;
+            dropdown.appendChild(option);
+        });
+    </script>
+</body>
+</html>
